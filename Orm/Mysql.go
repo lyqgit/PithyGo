@@ -168,7 +168,7 @@ func(m *mysql)delete(del map[string]string)int64{
 }
 
 func(m *mysql)query(sql string)[]map[string]string{
-
+	
 }
 
 func(m *mysql)find()[]map[string]string{
