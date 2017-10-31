@@ -14,13 +14,15 @@ type Orm interface{
 	limit(page int,num int)Orm
 	order(row string,sort string)Orm
 	join(condition ...string)Orm
+	group(row string)Orm
 	insert(add map[string]string)int64
 	insertAll(addAll []map[string]string)int
 	update(renew map[string]string)int64
 	delete(del map[string]string)int64
 	query(sql string)[]map[string]string
-	find()[]map[string]string
+	find()map[string]string
 	findAll()[]map[string]string
+	fetchSql()string
 	connect(driverName string,dataSourceName string)error
 	construct()
 }
@@ -34,7 +36,7 @@ func Connect(driverName string,dataSourceName string)Orm{
 		break
 
 		case "obdc":
-			m = new(mysql)
+			m = new(sqlserver)
 		break
 		
 	}
