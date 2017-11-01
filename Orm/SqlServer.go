@@ -1,6 +1,7 @@
 package Orm
 
 import (
+	"fmt"
 	"database/sql"
 	"strings"
 	_ "code.google.com/p/odbc"
@@ -50,7 +51,7 @@ func(m *sqlserver)construct(){
 	m.deleteSql = "DELETE FROM %TABLE% "
 	m.wherecondition = ""
 	m.option = make(map[string]string)
-	m.option["field"] = ""
+	m.option["field"] = "*"
 	m.option["table"] = ""
 	m.option["subquery"] = ""
 	m.option["force"] = ""
@@ -286,22 +287,28 @@ func(m *sqlserver)Query(sql string)[]map[string]string{
 			switch col.(type){
 				case string:
 					record[columns[i]] = col.(string)
-					break
+				break
 				case int64:
 					record[columns[i]] = strconv.FormatInt(col.(int64),10)
-					break
+				break
+				case int32:
+					record[columns[i]] = strconv.FormatInt(int64(col.(int32)),10)
+				break
+				case float64:
+					record[columns[i]] = strconv.FormatInt(int64(col.(float64)),10)
+				break
 				case time.Time:
 					record[columns[i]] = col.(time.Time).String()[:19]
-					break
+				break
 				case bool:
 					record[columns[i]] = strconv.FormatBool(col.(bool))
-					break
+				break
 				case nil:
 					record[columns[i]] = "null"
-					break
+				break
 				default:
 					record[columns[i]] = string(col.([]byte))
-					break
+				break
 
 			}
 		}
@@ -344,6 +351,7 @@ func(m *sqlserver)Select()[]map[string]string{
 		m.selectSql = strings.Replace(m.selectSql,"%UNION%",m.option["union"],1)
 		m.selectSql = strings.Replace(m.selectSql,"%LOCK%",m.option["lock"],1)
 		m.selectSql = strings.Replace(m.selectSql,"%COMMENT%",m.option["comment"],1)
+		m.sql = m.selectSql
 	}else{
 		m.selectPageSql = strings.Replace(m.selectPageSql,"%TABLE%",m.option["table"],1)
 		m.selectPageSql = strings.Replace(m.selectPageSql,"%FIELD%",m.option["field"],1)
@@ -358,9 +366,10 @@ func(m *sqlserver)Select()[]map[string]string{
 		m.selectPageSql = strings.Replace(m.selectPageSql,"%UNION%",m.option["union"],1)
 		m.selectPageSql = strings.Replace(m.selectPageSql,"%LOCK%",m.option["lock"],1)
 		m.selectPageSql = strings.Replace(m.selectPageSql,"%COMMENT%",m.option["comment"],1)
+		m.sql = m.selectPageSql
 	}
-	
-	return m.Query(m.selectSql)
+	fmt.Println(m.sql)
+	return m.Query(m.sql)
 }
 
 
