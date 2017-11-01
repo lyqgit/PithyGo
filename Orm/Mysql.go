@@ -244,7 +244,7 @@ func(m *mysql)query(sql string)[]map[string]string{
 		record := make(map[string]string)
 		rows.Scan(scanArgs...)
 		for i,col := range values{
-			record[columns[i]] = string(col.(string))
+			record[columns[i]] = string(col.([]byte))
 		}
 		m.out = append(m.out,record)
 		
