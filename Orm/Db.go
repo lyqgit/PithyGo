@@ -1,41 +1,37 @@
 package Orm
 
-import (
-	"fmt"
-	_ "code.google.com/p/odbc"
-	// "strings"
-)
 
-type Orm interface{
-	table(database string)Orm
-	alias(as string)Orm
-	field(row string)Orm
-	where(condtion ...interface{})Orm
-	limit(page int,num int)Orm
-	order(row string,sort string)Orm
-	join(condition ...string)Orm
-	group(row string)Orm
-	insert(add map[string]string)int64
-	insertAll(addAll []map[string]string)int
-	update(renew map[string]string)int64
-	delete(del map[string]string)int64
-	query(sql string)[]map[string]string
-	find()map[string]string
-	findAll()[]map[string]string
-	fetchSql()string
+
+type Db interface{
+	Table(database string)Db
+	Alias(as string)Db
+	Field(row string)Db
+	Where(condtion ...interface{})Db
+	Limit(page int,num int)Db
+	Order(row string,sort string)Db
+	Join(condition ...string)Db
+	Group(row string)Db
+	Insert(add map[string]string)int64
+	InsertAll(addAll []map[string]string)int
+	Update(renew map[string]string)int64
+	Delete()int64
+	Query(sql string)[]map[string]string
+	Find()map[string]string
+	Select()[]map[string]string
+	Have(condition string)Db
 	connect(driverName string,dataSourceName string)error
 	construct()
 }
 
-func Connect(driverName string,dataSourceName string)Orm{
-	var m Orm
+func Connect(driverName string,dataSourceName string)Db{
+	var m Db
 	var err error
 	switch driverName{
 		case "mysql":
-			m = new(mysql)			
+			m = new(mysql)
 		break
 
-		case "obdc":
+		case "sqlserver":
 			m = new(sqlserver)
 		break
 		
@@ -45,9 +41,10 @@ func Connect(driverName string,dataSourceName string)Orm{
 	return m
 }
 
+
 func SqlErr(err error){//输出错误
 	if err != nil{
-		fmt.Print(err)
+		panic(err)
 	}
 }
 
