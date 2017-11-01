@@ -5,6 +5,7 @@ import (
 	"strings"
 	_ "code.google.com/p/odbc"
 	"strconv"
+	"time"
 )
 
 type sqlserver struct{
@@ -252,7 +253,27 @@ func(m *sqlserver)query(sql string)[]map[string]string{
 		record := make(map[string]string)
 		rows.Scan(scanArgs...)
 		for i,col := range values{
-			record[columns[i]] = string(col.(string))
+			switch col.(type){
+				case string:
+					record[columns[i]] = col.(string)
+					break
+				case int64:
+					record[columns[i]] = strconv.FormatInt(col.(int64),10)
+					break
+				case time.Time:
+					record[columns[i]] = col.(time.Time).String()[:19]
+					break
+				case bool:
+					record[columns[i]] = strconv.FormatBool(col.(bool))
+					break
+				case nil:
+					record[columns[i]] = "null"
+					break
+				default:
+					record[columns[i]] = string(col.([]byte))
+					break
+
+			}
 		}
 		m.out = append(m.out,record)
 		
