@@ -1,6 +1,7 @@
 package Orm
 
 import (
+	"fmt"
 	"database/sql"
 	"strings"
 	_ "github.com/go-sql-driver/mysql"
@@ -13,7 +14,8 @@ type mysql struct{
 	selectSql string
 	insertSql string
 	RowSql string
-	ValSql string
+	ValSql []interface{}
+	whereValSql []interface{}
 	insertAllSql string
 	updateSql string
 	whereRowSql string
@@ -32,22 +34,21 @@ func(m *mysql)connect(driverName string,dataSourceName string)error{
 	return err
 }
 
-func(m *mysql)fetchSql()string{
-	return m.sql
-}
 
 func(m *mysql)construct(){
 	m.option = make(map[string]string)
 	m.selectSql = "SELECT %FIELD% FROM %TABLE% %SUBQUERY% %FORCE% %JOIN% %WHERE% %GROUP% %HAVING% %ORDER% %LIMIT% %UNION% %LOCK% %COMMENT%"
-	m.insertSql = "INSERT %TABLE% SET "+m.RowSql
-	m.RowSql = ""
+	m.insertSql = "INSERT INTO %TABLE% (%COLUMN%) VALUES (%ROWSQL%)"
+	m.option["column"]= ""
 	m.whereRowSql = ""
-	m.ValSql = ""
-	m.updateSql = "UPDATE %TABLE% SET "+m.RowSql+m.whereRowSql
-	m.deleteSql = "DELETE FROM %TABLE% "+m.whereRowSql
+	m.RowSql = ""
+	m.ValSql = nil
+	m.whereValSql = nil
+	m.updateSql = "UPDATE %TABLE% SET "
+	m.deleteSql = "DELETE FROM %TABLE% "
 	m.wherecondition = ""
 	m.option = make(map[string]string)
-	m.option["field"] = ""
+	m.option["field"] = "*"
 	m.option["table"] = ""
 	m.option["subquery"] = ""
 	m.option["force"] = ""
@@ -63,59 +64,64 @@ func(m *mysql)construct(){
 	m.querySql = ""
 }
 
-func(m *mysql)table(database string)Orm{
+func(m *mysql)Table(database string)Db{
 	m.construct()
 	m.option["table"] = database
 	return m
 }
 
-func(m *mysql)alias(as string)Orm{
+func(m *mysql)Alias(as string)Db{
 	m.option["alias"] = as
 	return m
 }
 
-func(m *mysql)field(row string)Orm{
+func(m *mysql)Field(row string)Db{
 	m.option["field"] = row
 	return m
 }
 
-func(m *mysql)where(condition ...interface{})Orm{
+func(m *mysql)Where(condition ...interface{})Db{
 	switch t := condition[0].(type){
-		case map[string]map[string]string:
-			for k,v := range t{
-				m.option["where"] = "where "
-				m.option["where"] += k+" = "
-				m.whereRowSql += k+" = ?"
-				for kk,vv := range v{
-					if vv == ""{
-						m.option["where"] += kk+" and "
-						m.whereRowSql += " and "
-					}else{
-						m.option["where"] += kk+" "+vv+" "
-						m.whereRowSql += " "+vv+" "
-					}
-					m.ValSql += kk+","
+		case map[string]string:
+			if m.option["where"] == " where "{
+				for k,v := range t{
+					
+					m.option["where"] += k+" = "+v+" and "
+					m.whereRowSql += k+" = ? and "
+					m.whereValSql = append(m.whereValSql,v)
+					m.wherecondition = ""
+				}
+			}else{
+				m.option["where"] = " where "
+				m.whereRowSql = " where "
+				for k,v := range t{
+					
+					m.option["where"] += k+" = "
+					m.whereRowSql += k+" = ? and "
+					m.whereValSql = append(m.whereValSql,v)
+					m.wherecondition = ""
 				}
 			}
+			m.whereRowSql = strings.TrimRight(m.whereRowSql,"and ")
 		break
 		case string:
-			if condition[2].(string) == ""{
+			if len(condition) < 3{
 				if m.option["where"] == ""{
-					m.option["where"] = "where "
+					m.option["where"] = " where "
 					m.option["where"] += t+" = "+condition[1].(string)
-					m.whereRowSql = "where "
+					m.whereRowSql = " where "
 					m.whereRowSql += t+" = ?"
-					m.ValSql += condition[1].(string)+","
+					m.ValSql = append(m.ValSql,condition[1].(string))
 					m.wherecondition = ""
 				}else{
 					if m.wherecondition == ""{
 						m.option["where"] += " and "+t+" = "+condition[1].(string)
 						m.whereRowSql += " and "+t+" = ?"
-						m.ValSql += condition[1].(string)+","
+						m.ValSql = append(m.ValSql,condition[1].(string))
 					}else{
 						m.option["where"] += " "+m.wherecondition+" "+t+" = "+condition[1].(string)
 						m.whereRowSql += " "+m.wherecondition+" "+t+" = ?"
-						m.ValSql += condition[1].(string)+","
+						m.ValSql = append(m.ValSql,condition[1].(string))
 					}
 					
 					m.wherecondition = ""
@@ -123,20 +129,20 @@ func(m *mysql)where(condition ...interface{})Orm{
 				
 			}else{
 				if m.option["where"] == ""{
-					m.option["where"] = "where "
+					m.option["where"] = " where "
 					m.option["where"] += t+" = "+condition[1].(string)+" "+condition[2].(string)
-					m.whereRowSql = "where "
+					m.whereRowSql = " where "
 					m.whereRowSql += t+" = ? "+condition[2].(string)
-					m.ValSql += condition[1].(string)+","
+					m.ValSql = append(m.ValSql,condition[1].(string))
 				}else{
 					if m.wherecondition == ""{
 						m.option["where"] += condition[2].(string)+" "+t+" = "+condition[1].(string)
 						m.whereRowSql += condition[2].(string)+" "+t+" = ? "
-						m.ValSql += condition[1].(string)+","
+						m.ValSql = append(m.ValSql,condition[1].(string))
 					}else{
 						m.option["where"] += m.wherecondition+" "+t+" = "+condition[1].(string)+" "+condition[2].(string)
 						m.whereRowSql += m.wherecondition+" "+t+" = ? "+condition[2].(string)
-						m.ValSql += condition[1].(string)+","
+						m.ValSql = append(m.ValSql,condition[1].(string))
 					}
 				}
 				m.wherecondition = condition[2].(string)	
@@ -147,87 +153,111 @@ func(m *mysql)where(condition ...interface{})Orm{
 	return m
 }
 
-func(m *mysql)limit(page int,num int)Orm{
+func(m *mysql)Limit(page int,num int)Db{
 	m.option["limit"] = "limit "+strconv.Itoa(page)+","+strconv.Itoa(num)
 	return m
 }
 
-func(m *mysql)order(row string,sort string)Orm{
+func(m *mysql)Order(row string,sort string)Db{
 	m.option["order"] = "order by "+row+" "+sort
 	return m
 }
 
-func(m *mysql)join(condition ...string)Orm{
+func(m *mysql)Join(condition ...string)Db{
 	if condition[2] == ""{
 		m.option["join"] = "left join "+condition[0]+" on "+condition[1]
 	}
 	return m
 }
 
-func(m *mysql)group(row string)Orm{
+func(m *mysql)Group(row string)Db{
 	m.option["group"] = " group by "+row
 	return m
 }
 
-func(m *mysql)insert(add map[string]string)int64{
-	m.assemble(m.insertSql,add)
+func(m *mysql)Have(condition string)Db{
+	m.option["have"] = "having "+condition
+	return m
+}
+
+func(m *mysql)Insert(add map[string]string)int64{
+	m.assemble("insert",add)
 	return m.rowsAffected(m.insertSql)
 }
 
-func(m *mysql)insertGetId(add map[string]string)int64{
-	m.assemble(m.insertSql,add)
-	res := m.Prepare(m.insertSql,m.ValSql)
+func(m *mysql)InsertGetId(add map[string]string)int64{
+	m.assemble("insert",add)
+	res := m.Prepare(m.insertSql)
 	num,err := res.LastInsertId()
 	defer SqlErr(err)
+	m.ValSql = nil
 	return num
 }
 
-func(m *mysql)Prepare(sql string,val string)sql.Result{
+func(m *mysql)Prepare(sql string)sql.Result{
 	stmt,err := m.db.Prepare(sql)
 	defer SqlErr(err)
-	res,err := stmt.Exec(val)
+	res,err := stmt.Exec(m.ValSql...)
 	defer SqlErr(err)
 	return res
 }
 
 func(m *mysql)assemble(cate string,assem map[string]string){
 	for k,v := range assem{
-		m.RowSql += k+" = ?,"
-		m.ValSql += v+","
+		m.option["column"] += k+","
+		m.RowSql += k+"=?,"
+		m.ValSql = append(m.ValSql,v)
 	}
+	m.option["column"] = strings.TrimRight(m.option["column"],",")
 	m.RowSql = strings.TrimRight(m.RowSql,",")
-	m.ValSql = strings.TrimRight(m.ValSql,",")
-	cate = strings.Replace(cate,"%TABLE%",m.option["table"],1)
+	switch cate{
+		case "insert":
+			m.insertSql = strings.Replace(m.insertSql,"%TABLE%",m.option["table"],1)
+			m.insertSql = strings.Replace(m.insertSql,"%COLUMN%",m.option["column"],1)
+			m.insertSql = strings.Replace(m.insertSql,"%ROWSQL%",m.RowSql,1)
+		break
+		case "update":
+			m.updateSql = strings.Replace(m.updateSql,"%TABLE%",m.option["table"],1)
+			m.ValSql = append(m.ValSql,m.whereValSql...)
+		break
+	}
 }
 
 
 
-func(m *mysql)insertAll(addAll []map[string]string)int{
+func(m *mysql)InsertAll(addAll []map[string]string)int{
 	var num []int64
 	for _,v := range addAll{
-		num = append(num,m.insertGetId(v))
+		num = append(num,m.InsertGetId(v))
 	}
 	return len(num)
 }
 
-func(m *mysql)update(renew map[string]string)int64{
-	m.assemble(m.updateSql,renew)
-	return m.rowsAffected(m.updateSql)
+func(m *mysql)Update(renew map[string]string)int64{
+	m.assemble("update",renew)
+	fmt.Println(m.updateSql+m.RowSql+m.whereRowSql)
+	return m.rowsAffected(m.updateSql+m.RowSql+m.whereRowSql)
 }
 
 func(m *mysql)rowsAffected(cate string)int64{//返回影响行数
-	res := m.Prepare(cate,m.ValSql)
+	res := m.Prepare(cate)
 	num,err := res.RowsAffected()
 	defer SqlErr(err)
 	return num
 }
 
-func(m *mysql)delete(del map[string]string)int64{
-	m.assemble(m.deleteSql,del)
-	return m.rowsAffected(m.deleteSql)
+func(m *mysql)Delete()int64{
+	m.deleteSql = strings.Replace(m.deleteSql,"%TABLE%",m.option["table"],1)
+	stmt,err := m.db.Prepare(m.deleteSql+m.whereRowSql)
+	defer SqlErr(err)
+	res,err := stmt.Exec(m.whereValSql...)
+	defer SqlErr(err)
+	num,err := res.RowsAffected()
+	defer SqlErr(err)
+	return num
 }
 
-func(m *mysql)query(sql string)[]map[string]string{
+func(m *mysql)Query(sql string)[]map[string]string{
 	
 	m.querySql = sql
 	rows,err := m.db.Query(m.querySql)
@@ -252,7 +282,7 @@ func(m *mysql)query(sql string)[]map[string]string{
 	return m.out
 }
 
-func(m *mysql)find()map[string]string{
+func(m *mysql)Find()map[string]string{
 	m.option["limit"] = "limit 1"
 	m.selectSql = strings.Replace(m.selectSql,"%TABLE%",m.option["table"],1)
 	m.selectSql = strings.Replace(m.selectSql,"%FIELD%",m.option["field"],1)
@@ -267,10 +297,12 @@ func(m *mysql)find()map[string]string{
 	m.selectSql = strings.Replace(m.selectSql,"%UNION%",m.option["union"],1)
 	m.selectSql = strings.Replace(m.selectSql,"%LOCK%",m.option["lock"],1)
 	m.selectSql = strings.Replace(m.selectSql,"%COMMENT%",m.option["comment"],1)
-	return m.query(m.selectSql)[0]
+	m.sql = m.selectSql
+	
+	return m.Query(m.selectSql)[0]
 }
 
-func(m *mysql)findAll()[]map[string]string{
+func(m *mysql)Select()[]map[string]string{
 	m.selectSql = strings.Replace(m.selectSql,"%TABLE%",m.option["table"],1)
 	m.selectSql = strings.Replace(m.selectSql,"%FIELD%",m.option["field"],1)
 	m.selectSql = strings.Replace(m.selectSql,"%SUBQUERY%",m.option["subquery"],1)
@@ -284,7 +316,9 @@ func(m *mysql)findAll()[]map[string]string{
 	m.selectSql = strings.Replace(m.selectSql,"%UNION%",m.option["union"],1)
 	m.selectSql = strings.Replace(m.selectSql,"%LOCK%",m.option["lock"],1)
 	m.selectSql = strings.Replace(m.selectSql,"%COMMENT%",m.option["comment"],1)
-	return m.query(m.selectSql)
+	m.sql = m.selectSql
+	
+	return m.Query(m.selectSql)
 }
 
 
