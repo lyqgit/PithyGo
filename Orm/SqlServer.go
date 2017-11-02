@@ -295,7 +295,7 @@ func(m *sqlserver)Query(sql string)[]map[string]string{
 					record[columns[i]] = strconv.FormatInt(int64(col.(int32)),10)
 				break
 				case float64:
-					record[columns[i]] = strconv.FormatInt(int64(col.(float64)),10)
+					record[columns[i]] = strconv.FormatFloat(col.(float64),'f',-1,64)
 				break
 				case time.Time:
 					record[columns[i]] = col.(time.Time).String()[:19]
