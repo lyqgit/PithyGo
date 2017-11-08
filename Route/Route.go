@@ -7,8 +7,8 @@ import (
 )
 
 type route struct{
-	normalUrl map[string]interface{}
-	parameterUrl map[string]interface{}
+	normalUrl map[string]Func
+	parameterUrl map[string]Func
 }
 
 var Mux = http.NewServeMux()
@@ -21,8 +21,8 @@ func init(){
 }
 
 func(r *route)init(){
-	r.normalUrl = make(map[string]interface{})
-	r.parameterUrl = make(map[string]interface{})
+	r.normalUrl = make(map[string]Func)
+	r.parameterUrl = make(map[string]Func)
 }
 
 func RouteStatic(pattern string,root string){
@@ -31,7 +31,7 @@ func RouteStatic(pattern string,root string){
 
 
 
-func Route(param string,con Control.ControInter){
+func Route(param string,con Func){
 	if strings.Contains(param,":"){
 		rter.parameterUrl[param] = con
 	}else{
@@ -50,7 +50,7 @@ func(ro *route)ServeHTTP(w http.ResponseWriter,r *http.Request){
 	if strings.Contains(url,":"){
 		for k,v := range ro.parameterUrl{
 			if len(strings.Split(k,"/")) == len(strings.Split(url,"/")){			
-				v.(Func)()
+				v()
 			}else{
 				continue
 			}
@@ -58,14 +58,11 @@ func(ro *route)ServeHTTP(w http.ResponseWriter,r *http.Request){
 	}else{
 		for k,v := range ro.normalUrl{
 			if k == url{
-				v.(Func)()
+				v()
 			}else{
 				continue
 			}
 		}
 	}
 	
-
-
-
 }

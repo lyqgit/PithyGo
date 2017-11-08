@@ -47,8 +47,15 @@ func(c *Controller)Destruct(w http.ResponseWriter,r *http.Request){
 	if c.template == ""{
 		w.Write([]byte(c.outData))
 	}else{
-		t,_ := template.ParseFiles(c.template)
+		t,err := template.ParseFiles(c.template)
+		check(err)
 		w.Header().Set("content-type","text/html; charset=UTF-8")
 		t.Execute(w,nil)
+	}
+}
+
+func check(err error){
+	if err != nil{
+		panic(err)
 	}
 }
