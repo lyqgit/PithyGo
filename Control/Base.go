@@ -8,8 +8,10 @@ import (
 type ControInter interface{
 	Init(w http.ResponseWriter,r *http.Request)
 	Assign()
+	Request()
 	Export()
-	GetParameter()
+	GetForms(key string)[]string
+	GetForm(key string)string
 	Destruct(w http.ResponseWriter,r *http.Request)
 	Fetch(html string)ControInter
 }
@@ -18,8 +20,9 @@ type Controller struct{
 	template string
 	outData string
 	tempData interface{}
-	Pithy_Request map[string][]string
-	RequestMethod string
+	pithy_Request map[string][]string
+	requestMethod string
+	url string
 }
 
 func(c *Controller)Fetch(html string){
@@ -34,14 +37,24 @@ func(c *Controller)Export(data string){
 	c.outData = data
 }
 
-func(c *Controller)GetParameter(key string)[]string{
-	return c.Pithy_Request[key]
+func(c *Controller)Request(){
+	
+}
+
+func(c *Controller)GetForms(key string)[]string{
+	return c.pithy_Request[key]
+}
+
+func(c *Controller)GetForm(key string)string{
+	return c.pithy_Request[key][0]
 }
 
 func(c *Controller)Init(w http.ResponseWriter,r *http.Request){
 	c.template = ""
-	c.RequestMethod = r.Method
-	c.Pithy_Request = r.Form
+	c.requestMethod = r.Method
+	c.pithy_Request = r.Form
+	c.tempData = nil
+	c.url = r.URL.String()
 }
 func(c *Controller)Destruct(w http.ResponseWriter,r *http.Request){
 	if c.template == ""{
@@ -50,7 +63,7 @@ func(c *Controller)Destruct(w http.ResponseWriter,r *http.Request){
 		t,err := template.ParseFiles(c.template)
 		check(err)
 		w.Header().Set("content-type","text/html; charset=UTF-8")
-		t.Execute(w,nil)
+		t.Execute(w,c.tempData)
 	}
 }
 
